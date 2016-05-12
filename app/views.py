@@ -1,15 +1,16 @@
 from flask import render_template, jsonify, flash, redirect, url_for, session, request, abort
-from app import app, db, bcrypt
+from app import app, db, bcrypt, mail
+from flask_login import login_user, logout_user
 from .forms import LoginForm, RegisterForm, SettingsForm
 from .models import User, Task, Admin
+from flask_mail import Message
+import security
+import re
 
 #---- Helper space
 
-global login_errors
-login_errors = None
-
-global register_errors
-register_errors = None
+global form_errors
+form_errors = None
 
 #This function is here to help me validate login, and keep the login view simple and clean, and is made because wtforms is not efficient enough when validating forms
 def validate_login(form):
@@ -17,64 +18,110 @@ def validate_login(form):
 	req_password = form.password.data
 	user = User.query.filter_by(email=req_email).first()
 	if user is None:
+		print "Fake email"
 		return "Email is incorrect"
 	elif not bcrypt.check_password_hash(user.password, req_password):
 		return "Password is incorrect"
 	else:
 		return None
 
-	
 def validate_register(form):
 	req_name = form.first_name.data
 	req_email = form.email.data
 	req_password = form.password.data
 	req_password_again = form.password_again.data
-	
-	if not form.validate_on_submit():
-		return "Fuck you bich"
+	u = User.query.filter_by(email=req_email).first()
+
+
+	if req_name == "" or req_email == "" or req_password == "":
+		return "Please enter all fields"
+	elif u != None:
+		return "Email is already registered"
+	elif req_password != req_password_again:
+		return "Passwords don't match"
+	elif not re.match("[^@]+@[^@]+\.[^@]+", req_email):
+		return "Did you enter a real email address ?"
 	else:
-		return "Still fuck you"
-	
+		return None
+
+def send_email(email, subject, html):
+    msg = Message("Confirm your email", recipients=[email])
+    msg.html = html
+    mail.send(msg)
+    return "Sent"
+
 #---- Actual views below
-	
+
 @app.route('/')
 def index():
-	global login_errors
-	error = login_errors
-	login_errors = None
+	global form_errors
+	error = form_errors
+	form_errors = None
 	lform = LoginForm()
 	rform = RegisterForm()
 	return render_template('index.html', lform=lform, rform=rform, error = error)
 
 @app.route('/login', methods=['POST'])
 def login():
-	global login_errors
+	global form_errors
 	lform = LoginForm()
 	rform = RegisterForm()
-	login_errors = validate_login(lform)
-	if login_errors == None:
+	form_errors = validate_login(lform)
+	if form_errors == None:
+		user = User.query.filter_by(email=lform.email.data).first()
+		login_user(user)
 		return redirect(url_for('home'))
 	else:
 		return redirect(url_for('index'))
-		
-		
 
-@app.route('/register')
+
+
+@app.route('/register', methods=['POST'])
 def register():
-	global register_errors
-	error = register_errors
+	global form_errors
+	error = form_errors
 	lform = LoginForm()
 	rform = RegisterForm()
-	register_errors = validate_register(rform)
-	if register_errors == None:
+	form_errors = validate_register(rform)
+	if form_errors == None:
+		user = User(first_name=rform.first_name.data, email=rform.email.data, password=rform.password.data)
+		req_email = rform.email.data
+		db.session.add(user)
+		db.session.commit()
+
+
+
+		subject = "Confirm your email"
+		token = security.ts.dumps(rform.email.data, salt='email-confirm-key')
+
+		confirm_url = url_for('confirm_email', token=token, _external=True)
+
+		html = "confirm email with this link %s" % (confirm_url)
+
+		send_email(req_email, subject, html)
+
 		return redirect(url_for('home'))
 	else:
 		return redirect(url_for('index'))
 
+@app.route('/confirm/<token>')
+def confirm_email(token):
+	try:
+		email = security.ts.loads(token, salt="email-confirm-key", max_age=86400)
+	except:
+		abort(404)
+	user = User.query.filter_by(email=email).first_or_404()
+	user.verified = True
 
-@app.route('/_logout')
+	db.session.add(user)
+	db.session.commit()
+
+	return redirect(url_for(home))
+
+@app.route('/logout')
 def logout():
-	pass
+	logout_user()
+	return redirect(url_for('index'))
 
 @app.route('/home')
 def home():

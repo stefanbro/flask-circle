@@ -14,7 +14,7 @@
 
 <hr/>
 
-<form>
+<form action="{{ url_for('register') }}" method="post">
 	<p>Register</p>
 	
 	{% if error != none %}
@@ -25,6 +25,7 @@
 	{{ rform.email(placeholder='email') }}<br><br>
 	{{ rform.password(placeholder='password') }}<br><br>
 	{{ rform.password_again(placeholder='password again') }}<br><br>
+    	<input type="submit" value="Submit">
 
 </form>
 
