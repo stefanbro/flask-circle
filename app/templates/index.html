@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block content %}
+<form action="{{ url_for('login') }}" method="post">
+	<p>Login</p>
+	
+	{% if error != none %}
+		<p style="color=red;"> {{ error }} </p>
+	{% endif %}
+	
+	{{ lform.email(placeholder='email') }}<br><br>
+	{{ lform.password(placeholder='password') }}
+	<input type="submit" value="Submit">
+</form>
+
+<hr/>
+
+<form>
+	<p>Register</p>
+	
+	{% if error != none %}
+		<p style="color=red;"> {{ error }} </p>
+	{% endif %}
+	
+	{{ rform.first_name(placeholder='First name') }}<br><br>
+	{{ rform.email(placeholder='email') }}<br><br>
+	{{ rform.password(placeholder='password') }}<br><br>
+	{{ rform.password_again(placeholder='password again') }}<br><br>
+
+</form>
+
+{% endblock %}

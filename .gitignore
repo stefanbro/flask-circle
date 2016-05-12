@@ -1,0 +1,4 @@
+*.pyc
+venv
+app.db
+db_repository
