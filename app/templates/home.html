@@ -3,11 +3,12 @@
 
     {% if current_user.is_authenticated %}
         <p> Ur logd in, {{ current_user.first_name }} </p>
+          {% if current_user.verified = False %}
+            <p>Please verify your email</p>
+          {% endif %}
         <a href="{{ url_for('logout') }}">Log out</a>
     {% else %}
         <p>Ur not logged in</p>
     {% endif %}
 	<p>Shit works yo</p>
-    
-
 {% endblock %}

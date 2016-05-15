@@ -6,6 +6,7 @@ from .models import User, Task, Admin
 from flask_mail import Message
 import security
 import re
+import requests
 
 #---- Helper space
 
@@ -45,10 +46,21 @@ def validate_register(form):
 		return None
 
 def send_email(email, subject, html):
-    msg = Message("Confirm your email", recipients=[email])
-    msg.html = html
-    mail.send(msg)
-    return "Sent"
+	key = 'key-d7cf59282e21d2143d887118d0996aac'
+	sandbox = 'sandbox0b7960a242c44b94a9c62ad543335a03.mailgun.org'
+	recipient = email
+	body = html
+
+	request_url='https://api.mailgun.net/v3/{0}/messages'.format(sandbox)
+	request = requests.post(request_url, auth=('api', key), data={
+		'from': 'hello@example.com',
+		'to': recipient,
+		'subject': 'Verify your email please',
+		'text': body
+	})
+	print 'Status: {0}'.format(request.status_code)
+	print 'Body: {}'.format(request.text)
+
 
 #---- Actual views below
 
@@ -116,7 +128,7 @@ def confirm_email(token):
 	db.session.add(user)
 	db.session.commit()
 
-	return redirect(url_for(home))
+	return redirect(url_for('home'))
 
 @app.route('/logout')
 def logout():
